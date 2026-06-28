@@ -1,0 +1,26 @@
+name: Generate LINE Stamps
+
+on:
+  workflow_dispatch:  # 手動実行ボタン
+  schedule:
+    - cron: '0 9 * * *'  # 毎日9時に自動実行（JST 18時）
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Generate stamps
+        run: python src/generate_stamps.py
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: line-stamps-${{ github.run_number }}
+          path: output/
+          retention-days: 7
