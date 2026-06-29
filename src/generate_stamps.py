@@ -162,17 +162,27 @@ def main():
     import random
     api_key = os.environ.get("GEMINI_API_KEY")
     os.makedirs(OUTPUT_DIR, exist_ok=True)
-
     with open(THEMES_PATH, "r", encoding="utf-8") as f:
         themes = json.load(f)
-
     # 実行回数をもとに順番にテーマを選ぶ
     run_number = int(os.environ.get("GITHUB_RUN_NUMBER", "0"))
     stamp_sets = themes["stamp_sets"]
     selected = stamp_sets[run_number % len(stamp_sets)]
-
     print(f"今回のテーマ: {selected['target']}（{selected['id']}）")
     create_stamp_set(selected, api_key)
+
+    # メイン画像・タブ画像の生成
+    first_stamp = os.path.join(OUTPUT_DIR, selected["id"], "stamp_01.png")
+    if os.path.exists(first_stamp):
+        # メイン画像（240×240）
+        main_img = Image.open(first_stamp).convert("RGBA")
+        main_img = main_img.resize((240, 240), Image.Resampling.LANCZOS)
+        main_img.save(os.path.join(OUTPUT_DIR, f"{selected['id']}_main.png"))
+        
+        # タブ画像（96×74）
+        tab_img = Image.open(first_stamp).convert("RGBA")
+        tab_img = tab_img.resize((96, 74), Image.Resampling.LANCZOS)
+        tab_img.save(os.path.join(OUTPUT_DIR, f"{selected['id']}_tab.png"))
 
     print("完了！")
 
