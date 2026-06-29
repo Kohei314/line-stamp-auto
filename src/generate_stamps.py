@@ -1,6 +1,7 @@
 import json
 import os
 import zipfile
+import google.generativeai as genai
 from PIL import Image, ImageDraw, ImageFont
 
 # パス設定
@@ -14,9 +15,36 @@ HEIGHT = 320
 FONT_SIZE = 48
 
 
+def generate_phrases(theme):
+    """Gemini APIでフレーズを自動生成"""
+    api_key = os.environ.get("GEMINI_API_KEY")
+    genai.configure(api_key=api_key)
+    model = genai.GenerativeModel("gemini-2.5-flash")
+
+    prompt = f"""
+LINEスタンプ用のフレーズを8個考えてください。
+
+テーマ: {theme["target"]}向け・{theme["style"]}
+条件:
+- 日本語で短いフレーズ（10文字以内）
+- LINEで実際に使いやすいもの
+- 重複なし
+
+以下のJSON形式のみで返してください。説明文は不要です。
+{{"phrases": ["フレーズ1", "フレーズ2", "フレーズ3", "フレーズ4", "フレーズ5", "フレーズ6", "フレーズ7", "フレーズ8"]}}
+"""
+
+    response = model.generate_content(prompt)
+    text = response.text.strip()
+
+    # JSONを抽出
+    text = text.replace("```json", "").replace("```", "").strip()
+    data = json.loads(text)
+    return data["phrases"]
+
+
 def create_stamp(phrase, output_path, bg_color, text_color):
     """1枚のスタンプ画像を生成"""
-    # 透過PNG作成
     img = Image.new("RGBA", (WIDTH, HEIGHT), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
 
@@ -47,26 +75,30 @@ def create_stamp(phrase, output_path, bg_color, text_color):
 def create_stamp_set(stamp_set):
     """1セット分のスタンプを生成してZIP化"""
     set_id = stamp_set["id"]
-    phrases = stamp_set["phrases"]
+
+    # Gemini APIでフレーズ自動生成
+    print(f"フレーズ生成中: {stamp_set['target']}")
+    phrases = generate_phrases(stamp_set)
+    print(f"生成されたフレーズ: {phrases}")
 
     # 出力フォルダ作成
     set_dir = os.path.join(OUTPUT_DIR, set_id)
     os.makedirs(set_dir, exist_ok=True)
 
-    # カラーパターン（フレーズごとに色を変える）
+    # カラーパターン
     colors = [
-        {"bg": (255, 220, 100, 255), "text": (80, 50, 0, 255)},    # 黄
-        {"bg": (100, 200, 255, 255), "text": (0, 50, 120, 255)},    # 青
-        {"bg": (255, 150, 150, 255), "text": (120, 0, 0, 255)},     # 赤
-        {"bg": (150, 230, 150, 255), "text": (0, 80, 0, 255)},      # 緑
-        {"bg": (200, 150, 255, 255), "text": (60, 0, 120, 255)},    # 紫
-        {"bg": (255, 180, 100, 255), "text": (100, 40, 0, 255)},    # オレンジ
-        {"bg": (150, 230, 230, 255), "text": (0, 80, 80, 255)},     # シアン
-        {"bg": (255, 200, 220, 255), "text": (120, 0, 60, 255)},    # ピンク
+        {"bg": (255, 220, 100, 255), "text": (80, 50, 0, 255)},
+        {"bg": (100, 200, 255, 255), "text": (0, 50, 120, 255)},
+        {"bg": (255, 150, 150, 255), "text": (120, 0, 0, 255)},
+        {"bg": (150, 230, 150, 255), "text": (0, 80, 0, 255)},
+        {"bg": (200, 150, 255, 255), "text": (60, 0, 120, 255)},
+        {"bg": (255, 180, 100, 255), "text": (100, 40, 0, 255)},
+        {"bg": (150, 230, 230, 255), "text": (0, 80, 80, 255)},
+        {"bg": (255, 200, 220, 255), "text": (120, 0, 60, 255)},
     ]
 
     image_paths = []
-    for i, phrase in enumerate(phrases[:8]):  # 最大8枚
+    for i, phrase in enumerate(phrases[:8]):
         color = colors[i % len(colors)]
         output_path = os.path.join(set_dir, f"stamp_{i+1:02d}.png")
         create_stamp(
