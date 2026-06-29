@@ -78,11 +78,27 @@ def create_shikishi_stamp(haiku, output_path, design):
 
     # フォントサイズを最大文字数に応じて自動調整
     max_chars = max(len(p1), len(p2), len(p3))
-    inner_height = HEIGHT - (margin + border) * 2 - 32
-    font_size = min(34, int(inner_height / max_chars))
+    usable_height = HEIGHT - 90  # 上下合計で90ピクセルの余白確保
+    font_size = max(20, int(usable_height / max_chars) - 2)  # 余裕を持たせる
+    font_size = min(32, font_size)  # 最大32
+
     font = ImageFont.truetype(FONT_PATH, font_size)
-    char_h = font_size + 4
+
+    char_h = font_size + 3
     char_w = font_size + 2
+
+    total_w = char_w * 3 + 10 * 2
+    start_x = (WIDTH - total_w) // 2 + total_w - char_w
+
+    inner_top = margin + border + 12
+
+    x1 = start_x
+    x2 = start_x - char_w - 10
+    x3 = start_x - (char_w + 10) * 2
+
+    y1 = inner_top
+    y2 = inner_top + char_h * 0.2  # オフセット小さくした
+    y3 = inner_top + char_h * 0.4  # オフセット小さくした
 
 
     # 3列を中央に配置
