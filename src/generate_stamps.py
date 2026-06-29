@@ -1,203 +1,164 @@
 import json
 import os
 import zipfile
-import google.generativeai as genai
 from PIL import Image, ImageDraw, ImageFont
 
-# パス設定
 THEMES_PATH = "themes/stamp_themes.json"
 FONT_PATH = "fonts/NotoSansJP-Bold.ttf"
 OUTPUT_DIR = "output"
 
-# LINE規格
 WIDTH = 370
 HEIGHT = 320
 
-# テーマごとのデザイン設定
-THEME_DESIGNS = {
-    "working_adult": {
-        "colors": [
-            {"bg": (70, 130, 180, 255), "text": (255, 255, 255, 255), "border": (40, 80, 130, 255)},
-            {"bg": (95, 158, 160, 255), "text": (255, 255, 255, 255), "border": (60, 110, 112, 255)},
-            {"bg": (112, 128, 144, 255), "text": (255, 255, 255, 255), "border": (70, 85, 100, 255)},
-            {"bg": (176, 196, 222, 255), "text": (40, 60, 100, 255), "border": (120, 145, 175, 255)},
-            {"bg": (230, 230, 250, 255), "text": (60, 60, 120, 255), "border": (170, 170, 210, 255)},
-            {"bg": (245, 245, 245, 255), "text": (50, 50, 50, 255), "border": (180, 180, 180, 255)},
-            {"bg": (255, 250, 240, 255), "text": (80, 60, 20, 255), "border": (200, 180, 140, 255)},
-            {"bg": (240, 248, 255, 255), "text": (30, 60, 100, 255), "border": (150, 190, 220, 255)},
-        ],
-        "font_size": 44,
-        "border_width": 4,
-        "radius": 20,
-        "shadow": True,
-    },
-    "college_student": {
-        "colors": [
-            {"bg": (255, 105, 180, 255), "text": (255, 255, 255, 255), "border": (220, 50, 140, 255)},
-            {"bg": (255, 165, 0, 255),   "text": (255, 255, 255, 255), "border": (210, 120, 0, 255)},
-            {"bg": (50, 205, 50, 255),   "text": (255, 255, 255, 255), "border": (30, 160, 30, 255)},
-            {"bg": (30, 144, 255, 255),  "text": (255, 255, 255, 255), "border": (10, 100, 210, 255)},
-            {"bg": (255, 69, 0, 255),    "text": (255, 255, 255, 255), "border": (200, 40, 0, 255)},
-            {"bg": (148, 0, 211, 255),   "text": (255, 255, 255, 255), "border": (100, 0, 160, 255)},
-            {"bg": (255, 215, 0, 255),   "text": (100, 70, 0, 255),   "border": (200, 160, 0, 255)},
-            {"bg": (0, 206, 209, 255),   "text": (255, 255, 255, 255), "border": (0, 150, 160, 255)},
-        ],
-        "font_size": 46,
-        "border_width": 5,
-        "radius": 50,
-        "shadow": True,
-    },
-    "housewife": {
-        "colors": [
-            {"bg": (255, 228, 225, 255), "text": (180, 80, 100, 255), "border": (240, 180, 190, 255)},
-            {"bg": (255, 240, 200, 255), "text": (160, 100, 30, 255), "border": (230, 200, 140, 255)},
-            {"bg": (220, 245, 220, 255), "text": (60, 130, 60, 255),  "border": (170, 220, 170, 255)},
-            {"bg": (220, 235, 255, 255), "text": (60, 90, 170, 255),  "border": (170, 200, 240, 255)},
-            {"bg": (250, 220, 250, 255), "text": (130, 50, 150, 255), "border": (210, 170, 220, 255)},
-            {"bg": (255, 245, 220, 255), "text": (150, 100, 30, 255), "border": (230, 210, 160, 255)},
-            {"bg": (225, 245, 240, 255), "text": (40, 120, 100, 255), "border": (170, 220, 210, 255)},
-            {"bg": (255, 235, 240, 255), "text": (170, 60, 90, 255),  "border": (230, 190, 200, 255)},
-        ],
-        "font_size": 44,
-        "border_width": 3,
-        "radius": 60,
-        "shadow": False,
-    },
-    "teenager": {
-        "colors": [
-            {"bg": (255, 182, 193, 255), "text": (180, 0, 80, 255),   "border": (255, 100, 150, 255)},
-            {"bg": (173, 216, 230, 255), "text": (0, 80, 160, 255),   "border": (100, 180, 220, 255)},
-            {"bg": (144, 238, 144, 255), "text": (0, 100, 0, 255),    "border": (80, 200, 80, 255)},
-            {"bg": (255, 255, 153, 255), "text": (130, 100, 0, 255),  "border": (220, 210, 0, 255)},
-            {"bg": (216, 191, 216, 255), "text": (100, 0, 130, 255),  "border": (180, 140, 200, 255)},
-            {"bg": (255, 200, 150, 255), "text": (160, 60, 0, 255),   "border": (230, 150, 80, 255)},
-            {"bg": (150, 230, 230, 255), "text": (0, 100, 110, 255),  "border": (80, 190, 200, 255)},
-            {"bg": (255, 160, 180, 255), "text": (150, 0, 60, 255),   "border": (220, 100, 130, 255)},
-        ],
-        "font_size": 48,
-        "border_width": 4,
-        "radius": 70,
-        "shadow": True,
-    },
-}
-
-# デフォルトデザイン（themes.jsonに新テーマ追加した時のフォールバック）
-DEFAULT_DESIGN = {
-    "colors": [
-        {"bg": (255, 220, 100, 255), "text": (80, 50, 0, 255), "border": (200, 160, 50, 255)},
-        {"bg": (100, 200, 255, 255), "text": (0, 50, 120, 255), "border": (50, 150, 220, 255)},
-        {"bg": (255, 150, 150, 255), "text": (120, 0, 0, 255), "border": (210, 80, 80, 255)},
-        {"bg": (150, 230, 150, 255), "text": (0, 80, 0, 255), "border": (80, 180, 80, 255)},
-        {"bg": (200, 150, 255, 255), "text": (60, 0, 120, 255), "border": (150, 90, 220, 255)},
-        {"bg": (255, 180, 100, 255), "text": (100, 40, 0, 255), "border": (210, 130, 40, 255)},
-        {"bg": (150, 230, 230, 255), "text": (0, 80, 80, 255), "border": (80, 180, 180, 255)},
-        {"bg": (255, 200, 220, 255), "text": (120, 0, 60, 255), "border": (210, 140, 170, 255)},
-    ],
-    "font_size": 48,
-    "border_width": 4,
-    "radius": 40,
-    "shadow": False,
-}
+TANZAKU_DESIGNS = [
+    {"bg": (123, 160, 91),  "inner": (242, 249, 236), "border": (74, 112, 48),  "deco": "line"},
+    {"bg": (232, 213, 160), "inner": (253, 248, 236), "border": (184, 148, 26), "deco": "line"},
+    {"bg": (160, 200, 232), "inner": (238, 246, 255), "border": (42, 106, 154), "deco": "circle"},
+    {"bg": (232, 160, 184), "inner": (255, 240, 244), "border": (160, 48, 96),  "deco": "heart"},
+    {"bg": (180, 140, 210), "inner": (248, 240, 255), "border": (100, 50, 160), "deco": "line"},
+    {"bg": (210, 140, 100), "inner": (255, 245, 235), "border": (150, 80, 30),  "deco": "line"},
+    {"bg": (140, 200, 200), "inner": (235, 252, 252), "border": (40, 130, 130), "deco": "circle"},
+    {"bg": (200, 200, 140), "inner": (252, 252, 235), "border": (120, 120, 40), "deco": "line"},
+]
 
 
-def generate_phrases(theme):
-    """Gemini APIでフレーズを自動生成"""
-    api_key = os.environ.get("GEMINI_API_KEY")
+def generate_haiku(theme, api_key):
+    """Gemini APIで川柳を自動生成"""
+    import google.generativeai as genai
     genai.configure(api_key=api_key)
     model = genai.GenerativeModel("gemini-2.5-flash")
 
     prompt = f"""
-LINEスタンプ用のフレーズを8個考えてください。
+LINEスタンプ用の川柳（5・7・5）を8句考えてください。
 
 テーマ: {theme["target"]}向け・{theme["style"]}
 条件:
-- 日本語で短いフレーズ（10文字以内）
-- LINEで実際に使いやすいもの
+- 必ず5文字・7文字・5文字の3フレーズに分ける
+- シュールで思わず笑えるもの、または日常でLINEで使えるもの
 - 重複なし
 
 以下のJSON形式のみで返してください。説明文は不要です。
-{{"phrases": ["フレーズ1", "フレーズ2", "フレーズ3", "フレーズ4", "フレーズ5", "フレーズ6", "フレーズ7", "フレーズ8"]}}
+{{"haiku": [
+  {{"p1": "5文字", "p2": "7文字", "p3": "5文字"}},
+  {{"p1": "5文字", "p2": "7文字", "p3": "5文字"}}
+]}}
 """
-
     response = model.generate_content(prompt)
-    text = response.text.strip()
-    text = text.replace("```json", "").replace("```", "").strip()
+    text = response.text.strip().replace("```json", "").replace("```", "").strip()
     data = json.loads(text)
-    return data["phrases"]
+    return data["haiku"]
 
 
-def create_stamp(phrase, output_path, color, design):
-    """1枚のスタンプ画像を生成"""
+def draw_deco(draw, design, width, height):
+    """上下の飾りを描画"""
+    margin = 10
+    border = 4
+    deco = design["deco"]
+    color = design["border"]
+
+    if deco == "circle":
+        cx = width // 2
+        draw.ellipse([cx - 6, margin + border + 6, cx + 6, margin + border + 18], fill=color)
+        draw.ellipse([cx - 18, margin + border + 10, cx - 8, margin + border + 20], fill=(*color, 160))
+        draw.ellipse([cx + 8, margin + border + 10, cx + 18, margin + border + 20], fill=(*color, 160))
+        draw.ellipse([cx - 6, height - margin - border - 18, cx + 6, height - margin - border - 6], fill=color)
+    elif deco == "heart":
+        cx = width // 2
+        for ox in [-20, 0, 20]:
+            x = cx + ox
+            draw.ellipse([x - 5, margin + border + 6, x + 5, margin + border + 14], fill=color)
+            draw.ellipse([x, margin + border + 6, x + 10, margin + border + 14], fill=color)
+            draw.polygon([(x - 5, margin + border + 12), (x + 5, margin + border + 20), (x + 10, margin + border + 12)], fill=color)
+        for ox in [-20, 0, 20]:
+            x = cx + ox
+            draw.ellipse([x - 5, height - margin - border - 20, x + 5, height - margin - border - 12], fill=color)
+            draw.ellipse([x, height - margin - border - 20, x + 10, height - margin - border - 12], fill=color)
+            draw.polygon([(x - 5, height - margin - border - 14), (x + 5, height - margin - border - 6), (x + 10, height - margin - border - 14)], fill=color)
+
+
+def create_tanzaku_stamp(haiku, output_path, design):
+    """短冊風スタンプを1枚生成"""
     img = Image.new("RGBA", (WIDTH, HEIGHT), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
 
     margin = 10
-    radius = design["radius"]
-    border_width = design["border_width"]
+    border = 4
+    radius = 20
 
-    # 影
-    if design["shadow"]:
-        shadow_offset = 4
-        draw.rounded_rectangle(
-            [margin + shadow_offset, margin + shadow_offset,
-             WIDTH - margin + shadow_offset, HEIGHT - margin + shadow_offset],
-            radius=radius,
-            fill=(0, 0, 0, 60)
-        )
-
-    # 枠線
+    # 外枠（短冊の色）
     draw.rounded_rectangle(
         [margin, margin, WIDTH - margin, HEIGHT - margin],
-        radius=radius,
-        fill=color["border"]
+        radius=radius, fill=(*design["bg"], 255)
     )
 
-    # 背景
+    # 内側（和紙色）
     draw.rounded_rectangle(
-        [margin + border_width, margin + border_width,
-         WIDTH - margin - border_width, HEIGHT - margin - border_width],
-        radius=max(radius - border_width, 0),
-        fill=color["bg"]
+        [margin + border, margin + border, WIDTH - margin - border, HEIGHT - margin - border],
+        radius=max(radius - border, 0), fill=(*design["inner"], 255)
     )
 
-    # フォント
-    font = ImageFont.truetype(FONT_PATH, design["font_size"])
+    # 上下の飾り線（2本）
+    line_y_top1 = margin + border + 22
+    line_y_top2 = line_y_top1 + 4
+    line_y_bot1 = HEIGHT - margin - border - 22
+    line_y_bot2 = line_y_bot1 + 4
+    for y in [line_y_top1, line_y_top2, line_y_bot1, line_y_bot2]:
+        draw.line([margin + border + 10, y, WIDTH - margin - border - 10, y],
+                  fill=design["border"], width=1)
 
-    # テキスト中央配置
-    bbox = draw.textbbox((0, 0), phrase, font=font)
-    text_w = bbox[2] - bbox[0]
-    text_h = bbox[3] - bbox[1]
-    x = (WIDTH - text_w) / 2
-    y = (HEIGHT - text_h) / 2
+    # 飾り
+    draw_deco(draw, design, WIDTH, HEIGHT)
 
-    draw.text((x, y), phrase, font=font, fill=color["text"])
+    # 川柳テキスト（縦書き・段々下がり）
+    p1, p2, p3 = haiku["p1"], haiku["p2"], haiku["p3"]
+
+    font_large = ImageFont.truetype(FONT_PATH, 30)
+
+    # 右列（p1・5文字）→ 上から
+    x1 = WIDTH - margin - border - 30
+    y1_start = line_y_top2 + 20
+
+    # 中列（p2・7文字）→ 少し下から
+    x2 = x1 - 38
+    y2_start = y1_start + 18
+
+    # 左列（p3・5文字）→ さらに下から
+    x3 = x2 - 38
+    y3_start = y2_start + 18
+
+    # 縦書き描画
+    for char in p1:
+        draw.text((x1, y1_start), char, font=font_large, fill=design["border"])
+        y1_start += 34
+
+    for char in p2:
+        draw.text((x2, y2_start), char, font=font_large, fill=design["border"])
+        y2_start += 34
+
+    for char in p3:
+        draw.text((x3, y3_start), char, font=font_large, fill=design["border"])
+        y3_start += 34
 
     img.save(output_path, "PNG")
-    print(f"生成: {phrase} → {output_path}")
+    print(f"生成: {p1}/{p2}/{p3} → {output_path}")
 
 
-def create_stamp_set(stamp_set):
-    """1セット分のスタンプを生成してZIP化"""
+def create_stamp_set(stamp_set, api_key):
     set_id = stamp_set["id"]
+    print(f"川柳生成中: {stamp_set['target']}")
 
-    print(f"フレーズ生成中: {stamp_set['target']}")
-    phrases = generate_phrases(stamp_set)
-    print(f"生成されたフレーズ: {phrases}")
-
-    # デザイン設定を取得（なければデフォルト）
-    design = THEME_DESIGNS.get(set_id, DEFAULT_DESIGN)
+    haiku_list = generate_haiku(stamp_set, api_key)
 
     set_dir = os.path.join(OUTPUT_DIR, set_id)
     os.makedirs(set_dir, exist_ok=True)
 
     image_paths = []
-    for i, phrase in enumerate(phrases[:8]):
-        color = design["colors"][i % len(design["colors"])]
+    for i, haiku in enumerate(haiku_list[:8]):
+        design = TANZAKU_DESIGNS[i % len(TANZAKU_DESIGNS)]
         output_path = os.path.join(set_dir, f"stamp_{i+1:02d}.png")
-        create_stamp(phrase, output_path, color, design)
+        create_tanzaku_stamp(haiku, output_path, design)
         image_paths.append(output_path)
 
-    # ZIP化
     zip_path = os.path.join(OUTPUT_DIR, f"{set_id}.zip")
     with zipfile.ZipFile(zip_path, "w") as zf:
         for path in image_paths:
@@ -206,13 +167,14 @@ def create_stamp_set(stamp_set):
 
 
 def main():
+    api_key = os.environ.get("GEMINI_API_KEY")
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
     with open(THEMES_PATH, "r", encoding="utf-8") as f:
         themes = json.load(f)
 
     for stamp_set in themes["stamp_sets"]:
-        create_stamp_set(stamp_set)
+        create_stamp_set(stamp_set, api_key)
 
     print("完了！")
 
