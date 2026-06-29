@@ -72,17 +72,17 @@ def create_shikishi_stamp(haiku, output_path, design):
     )
 
     # フォントサイズを最大文字数に応じて自動調整
-　　p1 = haiku["p1"]  # 5文字 右列
-　　p2 = haiku["p2"]  # 7文字 中列
-　　p3 = haiku["p3"]  # 5文字 左列
+    p1 = haiku["p1"]  # 5文字 右列
+    p2 = haiku["p2"]  # 7文字 中列
+    p3 = haiku["p3"]  # 5文字 左列
 
-　　# フォントサイズを最大文字数に応じて自動調整
-　　max_chars = max(len(p1), len(p2), len(p3))
-　　inner_height = HEIGHT - (margin + border) * 2 - 32
-　　font_size = min(34, int(inner_height / max_chars))
-　　font = ImageFont.truetype(FONT_PATH, font_size)
-　　char_h = font_size + 4
-　　char_w = font_size + 2
+    # フォントサイズを最大文字数に応じて自動調整
+    max_chars = max(len(p1), len(p2), len(p3))
+    inner_height = HEIGHT - (margin + border) * 2 - 32
+    font_size = min(34, int(inner_height / max_chars))
+    font = ImageFont.truetype(FONT_PATH, font_size)
+    char_h = font_size + 4
+    char_w = font_size + 2
 
 
     # 3列を中央に配置
