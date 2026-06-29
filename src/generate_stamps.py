@@ -139,14 +139,20 @@ def create_stamp_set(stamp_set, api_key):
 
 
 def main():
+    import random
     api_key = os.environ.get("GEMINI_API_KEY")
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
     with open(THEMES_PATH, "r", encoding="utf-8") as f:
         themes = json.load(f)
 
-    for stamp_set in themes["stamp_sets"]:
-        create_stamp_set(stamp_set, api_key)
+    # 実行回数をもとに順番にテーマを選ぶ
+    run_number = int(os.environ.get("GITHUB_RUN_NUMBER", "0"))
+    stamp_sets = themes["stamp_sets"]
+    selected = stamp_sets[run_number % len(stamp_sets)]
+
+    print(f"今回のテーマ: {selected['target']}（{selected['id']}）")
+    create_stamp_set(selected, api_key)
 
     print("完了！")
 
