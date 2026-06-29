@@ -1,24 +1,24 @@
 {
   "stamp_sets": [
     {
-      "id": "working_adult",
+      "id": "shakai_jin",
       "target": "社会人",
-      "style": "シンプル・ゆるかわ"
+      "style": "シュール・あるある・日常で使えるもの"
     },
     {
-      "id": "college_student",
+      "id": "college",
       "target": "大学生",
-      "style": "ポップ・トレンド感"
+      "style": "シュール・青春・あるある"
     },
     {
-      "id": "housewife",
-      "target": "主婦・ママ",
-      "style": "やさしい・ほっこり"
+      "id": "mainichi",
+      "target": "日常全般",
+      "style": "誰でも使える・共感できる・ほっこり"
     },
     {
-      "id": "teenager",
-      "target": "10代",
-      "style": "元気・かわいい"
+      "id": "love",
+      "target": "恋愛",
+      "style": "あるある・シュール・ちょっと切ない"
     }
   ]
 }
