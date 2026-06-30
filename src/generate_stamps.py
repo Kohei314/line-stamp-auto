@@ -130,12 +130,12 @@ def create_stamp_set(stamp_set, api_key):
     image_paths = []
     for i, haiku in enumerate(haiku_list[:8]):
         design = SHIKISHI_DESIGNS[i % len(SHIKISHI_DESIGNS)]
-        output_path = os.path.join(set_dir, f"stamp_{i+1:02d}.png")
+        output_path = os.path.join(set_dir, f"{i+1:02d}.png")
         create_shikishi_stamp(haiku, output_path, design)
         image_paths.append(output_path)
 
     # メイン画像・タブ画像を同じフォルダに生成
-    first_stamp = os.path.join(set_dir, "stamp_01.png")
+    first_stamp = os.path.join(set_dir, "01.png")
     main_path = os.path.join(set_dir, "main.png")
     tab_path = os.path.join(set_dir, "tab.png")
     
