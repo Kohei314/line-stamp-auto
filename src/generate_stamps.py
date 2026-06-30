@@ -33,9 +33,9 @@ LINEスタンプ用の川柳（5・7・5）を8句考えてください。
 
 テーマ: {theme["target"]}向け・{theme["style"]}
 条件:
-- p1は5文字程度（4～6文字なら可）
-- p2は7文字程度（6～8文字なら可）
-- p3は5文字程度（4～6文字なら可）
+- p1は必ず5文字ちょうど
+- p2は必ず7文字ちょうど
+- p3は必ず5文字ちょうど
 - シュールで思わず笑えるもの、または日常でLINEで使えるもの
 - 重複なし
 
@@ -44,27 +44,38 @@ LINEスタンプ用の川柳（5・7・5）を8句考えてください。
   {{"p1": "5文字", "p2": "7文字", "p3": "5文字"}}
 ]}}
 """
-    response = model.generate_content(prompt)
-    text = response.text.strip().replace("```json", "").replace("```", "").strip()
-    data = json.loads(text)
     
-    # バリデーション：4・6・4をチェック
     valid_haiku = []
-    for haiku in data["haiku"]:
-        p1_len = len(haiku["p1"])
-        p2_len = len(haiku["p2"])
-        p3_len = len(haiku["p3"])
+    max_attempts = 3  # 最大3回リトライ
+    attempt = 0
+    
+    while len(valid_haiku) < 8 and attempt < max_attempts:
+        attempt += 1
+        print(f"川柳生成 試行 {attempt}回目")
         
-        if 4 <= p1_len <= 6 and 6 <= p2_len <= 8 and 4 <= p3_len <= 6:
-            valid_haiku.append(haiku)
-        else:
-            print(f"スキップ（フォーマット不正）: {haiku['p1']}({p1_len})/{haiku['p2']}({p2_len})/{haiku['p3']}({p3_len})")
+        response = model.generate_content(prompt)
+        text = response.text.strip().replace("```json", "").replace("```", "").strip()
+        data = json.loads(text)
+        
+        # バリデーション：4・6・4をチェック
+        for haiku in data["haiku"]:
+            if len(valid_haiku) >= 8:
+                break
+                
+            p1_len = len(haiku["p1"])
+            p2_len = len(haiku["p2"])
+            p3_len = len(haiku["p3"])
+            
+            if 4 <= p1_len <= 6 and 6 <= p2_len <= 8 and 4 <= p3_len <= 6:
+                valid_haiku.append(haiku)
+            else:
+                print(f"スキップ（フォーマット不正）: {haiku['p1']}({p1_len})/{haiku['p2']}({p2_len})/{haiku['p3']}({p3_len})")
+        
+        # 不足分があれば待機してリトライ
+        if len(valid_haiku) < 8:
+            time.sleep(15)
     
-    # 不足分はダミーで埋める
-    while len(valid_haiku) < 8:
-        valid_haiku.append({"p1": "dummy", "p2": "dummy01", "p3": "test!"})
-    
-    time.sleep(15)
+    print(f"生成完了: {len(valid_haiku)}/8")
     return valid_haiku[:8]
 
 
