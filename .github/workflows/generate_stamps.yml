@@ -20,6 +20,14 @@ jobs:
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: python src/generate_stamps.py
+      - name: Extract ZIP for upload
+        run: |
+          cd output
+          for zipfile in *.zip; do
+            unzip -j "$zipfile" -d .
+          done
+          rm -rf shakai_jin college mainichi love mainichi
+          find . -name "*.zip" -delete
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
