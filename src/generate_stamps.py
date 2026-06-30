@@ -30,24 +30,29 @@ def generate_haiku(theme, api_key):
 
     all_haiku = []
     
-    # 40個を5個ずつ×8回生成
-    for batch in range(8):
-        print(f"バッチ {batch+1}/8")
+    # 32個を8個ずつ×4回生成
+    for batch in range(4):
+        print(f"バッチ {batch+1}/4")
         
         prompt = f"""
-LINEスタンプ用の川柳（5・7・5）を5句考えてください。
+LINEスタンプ用の川柳（5・7・5拍）を8句考えてください。
 
 テーマ: {theme["target"]}向け・{theme["style"]}
 条件:
-- p1は必ず5文字ちょうど
-- p2は必ず7文字ちょうど
-- p3は必ず5文字ちょうど（
+- p1は5拍ちょうど（「あ・い・う・え・お」のように数えて5拍）
+- p2は7拍ちょうど（「あ・い・う・え・お・か・き」で7拍）
+- p3は5拍ちょうど
+- 拍数の計算例：
+  「ありがとう」=あ・り・が・と・う=5拍（OK）
+  「了解です」=りょ・う・か・い・で・す=6拍（NG）
+  「おはようございます」=お・は・よ・う・ご・ざ・い・ま・す=9拍（NG）
 - シュールで思わず笑えるもの、または日常でLINEで使えるもの
-- 重複なし（これまでの{len(all_haiku)}個と被らないこと）
+- これまで生成された{len(all_haiku)}個と被らないこと
 
 以下のJSON形式のみで返してください。説明文は不要です。
 {{"haiku": [
-  {{"p1": "5文字", "p2": "7文字", "p3": "5文字"}}
+  {{"p1": "5拍", "p2": "7拍", "p3": "5拍"}},
+  {{"p1": "5拍", "p2": "7拍", "p3": "5拍"}}
 ]}}
 """
         
@@ -55,17 +60,19 @@ LINEスタンプ用の川柳（5・7・5）を5句考えてください。
         max_attempts = 3
         attempt = 0
         
-        while len(valid_haiku) < 5 and attempt < max_attempts:
+        while len(valid_haiku) < 8 and attempt < max_attempts:
             attempt += 1
+            print(f"バッチ{batch+1} 試行{attempt}回目")
             
             response = model.generate_content(prompt)
             text = response.text.strip().replace("```json", "").replace("```", "").strip()
             data = json.loads(text)
             
             for haiku in data["haiku"]:
-                if len(valid_haiku) >= 5:
+                if len(valid_haiku) >= 8:
                     break
-                    
+                
+                # バリデーション（拍数は正確に計算するのが難しいので、字面で4～6・6～8・4～6の範囲を許容）
                 p1_len = len(haiku["p1"])
                 p2_len = len(haiku["p2"])
                 p3_len = len(haiku["p3"])
@@ -75,14 +82,14 @@ LINEスタンプ用の川柳（5・7・5）を5句考えてください。
                 else:
                     print(f"スキップ: {haiku['p1']}({p1_len})/{haiku['p2']}({p2_len})/{haiku['p3']}({p3_len})")
             
-            if len(valid_haiku) < 5:
+            if len(valid_haiku) < 8:
                 time.sleep(15)
         
-        all_haiku.extend(valid_haiku[:5])
+        all_haiku.extend(valid_haiku[:8])
         time.sleep(15)
     
-    print(f"生成完了: {len(all_haiku)}/40")
-    return all_haiku[:40]
+    print(f"生成完了: {len(all_haiku)}/32")
+    return all_haiku[:32]
 
 
 def create_shikishi_stamp(haiku, output_path, design):
@@ -159,7 +166,7 @@ def create_stamp_set(stamp_set, api_key):
     os.makedirs(set_dir, exist_ok=True)
 
     image_paths = []
-    for i, haiku in enumerate(haiku_list[:40]):  # ← 40個に変更
+    for i, haiku in enumerate(haiku_list[:32]):  # ← 32個に変更
         design = SHIKISHI_DESIGNS[i % len(SHIKISHI_DESIGNS)]
         output_path = os.path.join(set_dir, f"{i+1:02d}.png")  # ← ファイル名を01.png形式に
         create_shikishi_stamp(haiku, output_path, design)
