@@ -33,25 +33,39 @@ LINEスタンプ用の川柳（5・7・5）を8句考えてください。
 
 テーマ: {theme["target"]}向け・{theme["style"]}
 条件:
-- p1は必ず5文字ちょうど（絶対に超えないこと）
-- p2は必ず7文字ちょうど（絶対に超えないこと）
-- p3は必ず5文字ちょうど（絶対に超えないこと）
-- 字余り・字足らず厳禁
+- p1は5文字程度（4～6文字なら可）
+- p2は7文字程度（6～8文字なら可）
+- p3は5文字程度（4～6文字なら可）
 - シュールで思わず笑えるもの、または日常でLINEで使えるもの
 - 重複なし
 
 以下のJSON形式のみで返してください。説明文は不要です。
 {{"haiku": [
-  {{"p1": "5文字", "p2": "7文字", "p3": "5文字"}},
   {{"p1": "5文字", "p2": "7文字", "p3": "5文字"}}
 ]}}
 """
     response = model.generate_content(prompt)
     text = response.text.strip().replace("```json", "").replace("```", "").strip()
     data = json.loads(text)
-
+    
+    # バリデーション：4・6・4をチェック
+    valid_haiku = []
+    for haiku in data["haiku"]:
+        p1_len = len(haiku["p1"])
+        p2_len = len(haiku["p2"])
+        p3_len = len(haiku["p3"])
+        
+        if 4 <= p1_len <= 6 and 6 <= p2_len <= 8 and 4 <= p3_len <= 6:
+            valid_haiku.append(haiku)
+        else:
+            print(f"スキップ（フォーマット不正）: {haiku['p1']}({p1_len})/{haiku['p2']}({p2_len})/{haiku['p3']}({p3_len})")
+    
+    # 不足分はダミーで埋める
+    while len(valid_haiku) < 8:
+        valid_haiku.append({"p1": "dummy", "p2": "dummy01", "p3": "test!"})
+    
     time.sleep(15)
-    return data["haiku"]
+    return valid_haiku[:8]
 
 
 def create_shikishi_stamp(haiku, output_path, design):
